@@ -11,7 +11,7 @@
             "program": "ising_2d_simulation.f90",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "C:\Users\manue\Documents\compu\ising2d\codes\codigo_mio",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",

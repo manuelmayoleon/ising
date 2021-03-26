@@ -6,16 +6,16 @@ program main
     integer, dimension(:), allocatable :: s, n1, n2, n3, n4
     real(kind = 8), dimension(-4:4) :: h
     real(kind = 8) :: T  
-    integer:: M, M0, mc , contador 
+    integer:: M, M0, mc ,contador  ,nm, ni,nmlim
     integer :: L, N , i ,iseed, j ,ij, ib, im 
     real(kind = 8) :: c, rm, rm2, rm1 , rm0 , tau ,error , chi ,uaux, U, U2, uaux2,cv, rm4,cbinder,rm2aux
     real(kind = 8) :: U4, konstaux ,errorchi, errorE,errorcv,errorE2,errorm4,errorrm2
     real(kind = 16) :: errorbinder
-    real(kind = 8) :: varm2, varm , Uspin ,varU, varU2
+    real(kind = 8) :: varm2, varm , Uspin ,varU, varU2    
     character(len=10)::long,temp,newn
+    REAL(kind=8)::alpha
 
-
-    L = 164  !Discretization
+    L = 16  !Discretization
     N = L*L
 
     ! M = 1e4 !total measures 
@@ -23,12 +23,14 @@ program main
     ! mc = 1e5 !monte carlo steps per measure 
 
 
-    M = 8192 !total measures 
+    M = 10000 !number of runs  
     M0 = 1000 !inital thermalization steps
-    mc = 1 !monte carlo steps per measure 
-
-
-
+    mc = 1 !monte carlo steps per run 
+    nm=22  ! number of measures
+    ni=8  ! initial measure
+    alpha=exp(dlog(dble(M)/dble(ni))/(nm-1))
+    nmlim=INT(dlog(dble(M/ni))/dlog(dble((1+ni))/dble(ni)))+1
+    print*, alpha, nmlim
     tau = 0
     uaux = 0
     uaux2 = 0
@@ -76,9 +78,11 @@ program main
  
  call plot_file ( L, s, 'Initial Configuration', 'ising_2d_initial_L' // trim(adjustl(long)) // '.txt', &
  'ising_2d_initial_L' // trim(adjustl(long))  // '.png' )
-
-    T = 0.49 !initial T 
-    do while (T >= 0.49)
+IF(nm>nmlim) THEN
+  PRINT*, ' Has cogido mal el nmedidas'
+ELSE  
+    T = 4.0 !initial T 
+    do while (T >= 0.1)
         do j = -4, 4, 2 
             h(j) = min(1.0, exp(-2d0*j/T))
         end do 
@@ -102,6 +106,7 @@ program main
         end do 
         
 
+
         !Thermalization has finished
 
         ! !Initialization of averages
@@ -116,13 +121,13 @@ program main
         errorm4 = 0.d00
         
 
-   contador = 0 
+        contador = ni 
 
         rm1 = real(abs(sum(s)))/N
 
         ! open(66, file = 'fort.66', status="unknown", action="write") 
-        do im = 1, M !M is total measurements
-            contador = contador+1
+      do im = 1, M !M is total measurements
+            
 !alternative is to run sequentially through the sites to update instead of selecting them sequentially            
             ! do ij=1,mc
             !   do i=1,N
@@ -130,7 +135,7 @@ program main
             !   if (ran_u() < h(ib)) s(i)=-s(i)
             !   enddo
             !   enddo
-
+              
             do ij = 1, mc*N  !here we evolve mc times in order to avoid correlations
                 i = i_dran(N)
                 ib = s(i)*(s(n1(i)) + s(n2(i)) + s(n3(i)) + s(n4(i)))
@@ -148,10 +153,10 @@ program main
             enddo 
 
         
-!!! TAKE MEASURES EACH 20 STEPS
+!!! TAKE MEASURES FOR EACH VALUE OF contador 
         
-            if (contador ==20) then 
-                contador = 0
+            if (im==contador) then 
+                ! contador = 0
                 U = U + uaux 
                 U2 = U2 + uaux**2
                 U4 = U4 + uaux **4
@@ -162,7 +167,10 @@ program main
                 rm4 = rm4 + rm0**4 !sum of magnetization^2
                 c = c +rm0*rm1
                 rm1 = rm0 
-
+                contador=INT(alpha**(im-1)*ni)
+                PRINT*, im
+                PRINT*, " el valor del contador :"
+                PRINT*, contador
             endif
         end do 
 
@@ -190,7 +198,7 @@ program main
         Uspin = U/ N !Energy per spin 
 		
 		
-        print*, 'c',  c
+        ! print*, 'c',  c
 
         if (c /= 1.0) then
             tau = c/(1.0 - c)
@@ -211,26 +219,30 @@ program main
 	
         errorcv = (1/(N*T**2d0))*((errorE2)**2d0 + (2d0*U)**2d0 * (errorE)**2d0)**0.5d0
 
-		
-        ! write(66,*) T,rm,error,chi,errorchi,Uspin,errorE/N,cv,errorcv,cbinder
-        T = T - 0.05 
-        print*, 'T', T 
-        
           !  Write the final state to a gnuplot file.
           !
-        if (T<=0.49) then
-              WRITE(temp,'(F10.2)')   T 
+        PRINT*, REAL(NINT(T)) 
+        if (MOD(T,2.0)==0.0) then
+          WRITE(temp,'(F10.2)')  T 
 
-            newn= trim(long)// "_"// trim(adjustl(temp)) 
-          call plot_file ( L, s, 'Final Configuration', 'ising_2d_final_'// trim(adjustl(newn))  // '.txt', &
-          'ising_2d_final_' // trim(adjustl(newn)) // '.png' )
+          newn= trim(long)// "_"// trim(adjustl(temp)) 
+           call plot_file ( L, s, 'Final Configuration', 'ising_2d_final_'// trim(adjustl(newn))  // '.txt', &
+            'ising_2d_final_' // trim(adjustl(newn)) // '.png' )
         end if
+
+		
+        ! write(66,*) T,rm,error,chi,errorchi,Uspin,errorE/N,cv,errorcv,cbinder
+        T = T - 0.1 
+        ! print*, 'T', T 
+        
+
+
 
     
     end do 
     ! close(88)    
     ! close(66)
-
+END IF
 contains 
 
 function initial_state(N,dran_u) result(s) 
