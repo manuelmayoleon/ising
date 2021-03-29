@@ -1,0 +1,7 @@
+PARA QUE TE DIGA MAS COSAS SOBRE LOS FALLOS
+
+gfortran -g -fcheck=all -Wall tuprograma.f90
+
+CORRER DE NORMAL
+
+gfortran ising_2d.f90 dranxor.f90 -o ising.exe
